@@ -4,20 +4,70 @@
  * and open the template in the editor.
  */
 package my.plantdata;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import jssc.SerialPort;
+import jssc.SerialPortEvent;
+import jssc.SerialPortEventListener;
+import jssc.SerialPortException;
 
 /**
  *
  * @author AJV
  */
-public class PlantDataUI extends javax.swing.JFrame {
 
+
+public class PlantDataUI extends javax.swing.JFrame {
+    
+    public static final String PORT = "COM10";
+    
+    class SerialPortReader implements SerialPortEventListener {
+ 
+        public void serialEvent(SerialPortEvent event) {
+            //Object type SerialPortEvent carries information about which event occurred and a value.
+            //For example, if the data came a method event.getEventValue() returns us the number of bytes in the input buffer.
+            
+            if(event.isRXCHAR()){
+                if(event.getEventValue() > 0){
+                    try {
+                        //byte buffer[] = serialPort.readString(event.getEventValue());
+                        String buff = serialPort.readString(event.getEventValue());//new String(buffer);
+                        print(buff);
+                    }
+                    catch (SerialPortException ex) {
+                        System.out.println(ex);
+                    }
+                }
+            }
+            /*//If the CTS line status has changed, then the method event.getEventValue() returns 1 if the line is ON and 0 if it is OFF.
+            else if(event.isCTS()){
+                if(event.getEventValue() == 1){
+                    System.out.println("CTS - ON");
+                }
+                else {
+                    System.out.println("CTS - OFF");
+                }
+            }
+            else if(event.isDSR()){
+                if(event.getEventValue() == 1){
+                    System.out.println("DSR - ON");
+                }
+                else {
+                    System.out.println("DSR - OFF");
+                }
+            }*/
+        }
+    }
+    
     /**
      * Creates new form PlantDataUI
      */
     public PlantDataUI() {
         initComponents();
     }
-
+    
+    static SerialPort serialPort;
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -27,6 +77,7 @@ public class PlantDataUI extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jProgressBar1 = new javax.swing.JProgressBar();
         jPanel1 = new javax.swing.JPanel();
         jToggleButton1 = new javax.swing.JToggleButton();
         jToggleButton2 = new javax.swing.JToggleButton();
@@ -35,14 +86,26 @@ public class PlantDataUI extends javax.swing.JFrame {
         jTextArea1 = new javax.swing.JTextArea();
         jButton2 = new javax.swing.JButton();
         jButton1 = new javax.swing.JButton();
+        jButton3 = new javax.swing.JButton();
+        jButton4 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Plant Data", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 18))); // NOI18N
 
         jToggleButton1.setText("Plant 1");
+        jToggleButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jToggleButton1ActionPerformed(evt);
+            }
+        });
 
         jToggleButton2.setText("Plant 2");
+        jToggleButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jToggleButton2ActionPerformed(evt);
+            }
+        });
 
         jLabel1.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
         jLabel1.setText("Information from plants:");
@@ -52,6 +115,11 @@ public class PlantDataUI extends javax.swing.JFrame {
         jScrollPane1.setViewportView(jTextArea1);
 
         jButton2.setText("Clear");
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -98,18 +166,38 @@ public class PlantDataUI extends javax.swing.JFrame {
             }
         });
 
+        jButton3.setText("Connect");
+        jButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton3ActionPerformed(evt);
+            }
+        });
+
+        jButton4.setText("Disconnect");
+        jButton4.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton4ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap())
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jButton1)
-                .addGap(32, 32, 32))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(10, 10, 10)
+                        .addComponent(jButton3)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jButton4)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jButton1)
+                        .addGap(32, 32, 32))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addContainerGap())))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -117,7 +205,10 @@ public class PlantDataUI extends javax.swing.JFrame {
                 .addContainerGap()
                 .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jButton1)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButton1)
+                    .addComponent(jButton3)
+                    .addComponent(jButton4))
                 .addContainerGap())
         );
 
@@ -128,6 +219,68 @@ public class PlantDataUI extends javax.swing.JFrame {
         System.exit(0);
     }//GEN-LAST:event_jButton1ActionPerformed
 
+    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        serialPort = new SerialPort(PORT); 
+        try {
+            serialPort.openPort();
+            serialPort.setParams(38400, 8, 1, 0);
+            //Preparing a mask. In a mask, we need to specify the types of events that we want to track.
+            //Well, for example, we need to know what came some data, thus in the mask must have the
+            //following value: MASK_RXCHAR. If we, for example, still need to know about changes in states 
+            //of lines CTS and DSR, the mask has to look like this: SerialPort.MASK_RXCHAR + SerialPort.MASK_CTS + SerialPort.MASK_DSR
+            int mask = SerialPort.MASK_RXCHAR;
+            //Set the prepared mask
+            serialPort.setEventsMask(mask);
+            //Add an interface through which we will receive information about events
+            serialPort.addEventListener(new SerialPortReader());
+        }
+        catch (SerialPortException ex) {
+            System.out.println(ex);
+        }
+        
+    }//GEN-LAST:event_jButton3ActionPerformed
+
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        jTextArea1.setText(null);
+    }//GEN-LAST:event_jButton2ActionPerformed
+
+    private void jToggleButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton1ActionPerformed
+        if(serialPort.isOpened()){
+            try {
+                serialPort.writeString("1");
+            } catch (SerialPortException ex) {
+                Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            jTextArea1.setText("Connection not stablished");
+        }
+    }//GEN-LAST:event_jToggleButton1ActionPerformed
+
+    private void jToggleButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton2ActionPerformed
+        if(serialPort.isOpened()){
+            try {
+                serialPort.writeString("2");
+            } catch (SerialPortException ex) {
+                Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            jTextArea1.setText("Connection not stablished");
+        }
+    }//GEN-LAST:event_jToggleButton2ActionPerformed
+
+    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+        try {
+            serialPort.closePort();
+        } catch (SerialPortException ex) {
+            Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_jButton4ActionPerformed
+
+    private void print(String s){
+        jTextArea1.append(s);
+    }
+    
+    
     /**
      * @param args the command line arguments
      */
@@ -166,8 +319,11 @@ public class PlantDataUI extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButton3;
+    private javax.swing.JButton jButton4;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JProgressBar jProgressBar1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTextArea jTextArea1;
     private javax.swing.JToggleButton jToggleButton1;
