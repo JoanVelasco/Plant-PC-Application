@@ -4,9 +4,9 @@
  * and open the template in the editor.
  */
 package my.plantdata;
+import java.sql.Timestamp;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.DefaultCellEditor;
 import javax.swing.table.DefaultTableModel;
 import jssc.SerialPort;
 import jssc.SerialPortEvent;
@@ -21,7 +21,15 @@ import jssc.SerialPortException;
 
 public class PlantDataUI extends javax.swing.JFrame {
     
-    public static final String PORT = "COM14";
+    public static final String PORT = "COM17";
+    DefaultTableModel model;
+    static SerialPort serialPort;
+    String data = "", plantA = "", plantB = "";
+    Timestamp time1, time2;
+    long counter1 = 0, counter2 = 0;
+    boolean manual = false;
+    public static final long MAX_TIME = 1000000; //Time that takes for the water tank to empty. Needs to be adjusted.
+    
     
     class SerialPortReader implements SerialPortEventListener {
  
@@ -34,7 +42,85 @@ public class PlantDataUI extends javax.swing.JFrame {
                     try {
                         //byte buffer[] = serialPort.readString(event.getEventValue());
                         String buff = serialPort.readString(event.getEventValue());//new String(buffer);
-                        print(buff);
+                        //Change for a switch case!!
+                        data = data + buff;
+                        System.out.println(data.length());
+                        //Keep the flow of data in the original packs of 8 bytes
+                        if (data.length() > 7) {
+                            if (data.startsWith("A")){
+                                if(data.length() > 8){
+                                    plantA = data.substring(0, 9);//should be (0, 9)
+                                    data = data.substring(9);
+                                } else {
+                                    plantA = data;
+                                    data = "";
+                                }
+                                System.out.println(plantA);
+                                print(plantA);
+                                //Set the moisture value to the table
+                                model.setValueAt(plantA.substring(1, 4), 0, 1);
+                                //Control if the valve is open or not to update the water level in the automatic mode
+                                if(!manual){
+                                    System.out.println(plantA.charAt(5));
+                                    if(plantA.charAt(5) == '1'){
+                                        System.out.println(plantA.charAt(5));
+                                        if(time1 == null){
+                                            System.out.println(plantA.charAt(5));
+                                            time1 = new Timestamp(System.currentTimeMillis());
+                                        } else {
+                                            Timestamp timeaux = new Timestamp(System.currentTimeMillis());
+                                            counter1 = counter1 + (timeaux.getTime() - time1.getTime());
+                                            System.out.println(counter1);
+                                            updateWaterLevel();
+                                            time1 = timeaux;
+                                        }
+                                    } else if (plantA.charAt(5) == '0'){
+                                        if(time1 != null){
+                                            Timestamp timeaux = new Timestamp(System.currentTimeMillis());
+                                            counter1 = counter1 + (timeaux.getTime() - time1.getTime());
+                                            updateWaterLevel();
+                                            time1 = null;
+                                        }
+                                    }
+                                }
+                            //Keep the flow of data in the original packs of 8 bytes
+                            } else if (data.startsWith("C")){
+                                if(data.length() > 8){
+                                    plantB = data.substring(0, 9);//should be (0, 9)
+                                    data = data.substring(9);
+                                } else {
+                                    plantB = data;
+                                    data = "";
+                                }
+                                System.out.println(plantB);
+                                print(plantB);
+                                //Set the moisture value to the table
+                                model.setValueAt(plantB.substring(1, 4), 0, 2);
+                                //Control if the valve is open or not to update the water level in the automatic mode
+                                if(!manual){    
+                                    if(plantB.charAt(5) == '1'){    
+                                        if(time2 == null){
+                                            time2 = new Timestamp(System.currentTimeMillis());
+                                        } else {
+                                            Timestamp timeaux = new Timestamp(System.currentTimeMillis());
+                                            counter2 = counter2 + (timeaux.getTime() - time2.getTime());
+                                            updateWaterLevel();
+                                            time2 = timeaux;
+                                        }
+                                    } else if (plantB.charAt(5) == '0'){
+                                        if(time2 != null){
+                                            Timestamp timeaux = new Timestamp(System.currentTimeMillis());
+                                            counter2 = counter2 + (timeaux.getTime() - time2.getTime());
+                                            updateWaterLevel();
+                                            time2 = null;
+                                        }
+                                    }
+                                }
+                            } else {
+                                    //print(buff);
+                            }
+                        }
+                        //print(buff);
                     }
                     catch (SerialPortException ex) {
                         System.out.println(ex);
@@ -64,9 +150,9 @@ public class PlantDataUI extends javax.swing.JFrame {
     /**
      * Creates new form PlantDataUI
      */
-    DefaultTableModel model;
     public PlantDataUI() {
         initComponents();
+        serialPort = new SerialPort(PORT);
         model = (DefaultTableModel) jTable1.getModel();
         
         super.setLocationRelativeTo(null);
@@ -77,7 +163,6 @@ public class PlantDataUI extends javax.swing.JFrame {
         jTable1.getRowModel().getRow(2).setCellEditor(new DefaultCellEditor(c));*/
     }
     
-    static SerialPort serialPort;
     
     /**
      * This method is called from within the constructor to initialize the form.
@@ -101,6 +186,7 @@ public class PlantDataUI extends javax.swing.JFrame {
         jLabel2 = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTextArea1 = new javax.swing.JTextArea();
+        jToggleButton3 = new javax.swing.JToggleButton();
         jButton1 = new javax.swing.JButton();
         jButton3 = new javax.swing.JButton();
         jButton4 = new javax.swing.JButton();
@@ -146,6 +232,8 @@ public class PlantDataUI extends javax.swing.JFrame {
         jTable1.setAutoscrolls(false);
         jScrollPane2.setViewportView(jTable1);
 
+        jProgressBar2.setToolTipText("");
+        jProgressBar2.setValue(100);
         jProgressBar2.setStringPainted(true);
 
         jLabel3.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
@@ -157,6 +245,13 @@ public class PlantDataUI extends javax.swing.JFrame {
         jTextArea1.setColumns(20);
         jTextArea1.setRows(5);
         jScrollPane1.setViewportView(jTextArea1);
+
+        jToggleButton3.setText("Manual");
+        jToggleButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jToggleButton3ActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -184,7 +279,8 @@ public class PlantDataUI extends javax.swing.JFrame {
                                     .addGroup(jPanel1Layout.createSequentialGroup()
                                         .addComponent(jToggleButton1)
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                        .addComponent(jToggleButton2)))))
+                                        .addComponent(jToggleButton2))
+                                    .addComponent(jToggleButton3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         );
         jPanel1Layout.setVerticalGroup(
@@ -196,9 +292,12 @@ public class PlantDataUI extends javax.swing.JFrame {
                     .addComponent(jLabel2))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(jToggleButton1)
-                        .addComponent(jToggleButton2))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jToggleButton1)
+                            .addComponent(jToggleButton2))
+                        .addGap(18, 18, 18)
+                        .addComponent(jToggleButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 26, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 77, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(41, 41, 41)
                 .addComponent(jLabel3)
@@ -206,10 +305,10 @@ public class PlantDataUI extends javax.swing.JFrame {
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(141, 141, 141)
                         .addComponent(jButton2)
-                        .addContainerGap(62, Short.MAX_VALUE))
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(8, 8, 8)
-                        .addComponent(jProgressBar2, javax.swing.GroupLayout.PREFERRED_SIZE, 19, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jProgressBar2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jScrollPane1)
                         .addContainerGap())))
@@ -267,11 +366,13 @@ public class PlantDataUI extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+    
+    //Exit button
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         System.exit(0);
     }//GEN-LAST:event_jButton1ActionPerformed
 
+    //Connection button
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
         serialPort = new SerialPort(PORT); 
         try {
@@ -293,35 +394,77 @@ public class PlantDataUI extends javax.swing.JFrame {
         
     }//GEN-LAST:event_jButton3ActionPerformed
 
+    //Clear Button
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         jTextArea1.setText(null);
-        jProgressBar2.setValue(50); //Set the value of the progress bar of the tank
+        //jProgressBar2.setValue(50); //Set the value of the progress bar of the tank
     }//GEN-LAST:event_jButton2ActionPerformed
 
+    //Manually open valve plant 1
     private void jToggleButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton1ActionPerformed
         if(serialPort.isOpened()){
-            try {
-                serialPort.writeString("1");
-            } catch (SerialPortException ex) {
-                Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+            if(jToggleButton1.isSelected()){
+                try {
+                    serialPort.writeString("1");
+                    //print("1");
+                    if(manual){
+                        time1 = new Timestamp(System.currentTimeMillis());
+                    }
+                } catch (SerialPortException ex) {
+                    Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } else {
+                try {
+                    serialPort.writeString("2");
+                    //print("2");
+                    if(manual){
+                        Timestamp timeaux = new Timestamp(System.currentTimeMillis());
+                        counter1 = counter1 + (timeaux.getTime() - time1.getTime());
+                        updateWaterLevel();
+                        time1 = null;
+                    }
+                } catch (SerialPortException ex) {
+                    Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         } else {
             jTextArea1.setText("Connection not stablished");
         }
     }//GEN-LAST:event_jToggleButton1ActionPerformed
 
+    //Manually open valve plant 2
     private void jToggleButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton2ActionPerformed
         if(serialPort.isOpened()){
-            try {
-                serialPort.writeString("3");
-            } catch (SerialPortException ex) {
-                Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+            if(jToggleButton2.isSelected()){
+                try {
+                    serialPort.writeString("3");
+                    //print("3");
+                    if(manual){
+                        time2 = new Timestamp(System.currentTimeMillis());
+                    }
+                } catch (SerialPortException ex) {
+                    Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } else {
+                try {
+                    serialPort.writeString("4");
+                    //print("4");
+                    if(manual){
+                        Timestamp timeaux = new Timestamp(System.currentTimeMillis());
+                        counter2 = counter2 + (timeaux.getTime() - time2.getTime());
+                        updateWaterLevel();
+                        time2 = null;
+                    }
+                } catch (SerialPortException ex) {
+                    Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         } else {
             jTextArea1.setText("Connection not stablished");
         }
     }//GEN-LAST:event_jToggleButton2ActionPerformed
 
+    //Disconnect button
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
         try {
             serialPort.closePort();
@@ -330,10 +473,63 @@ public class PlantDataUI extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_jButton4ActionPerformed
 
+    private void jToggleButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton3ActionPerformed
+        if(serialPort.isOpened()){
+            if(jToggleButton3.isSelected()){
+                try {
+                    serialPort.writeString("5");
+                    //print("5");
+                    jToggleButton3.setText("Automatic");
+                    manual = true;
+                    Timestamp timeaux = new Timestamp(System.currentTimeMillis());
+                    if(time1 != null){
+                        counter1 = counter1 + (timeaux.getTime() - time1.getTime());
+                    }
+                    if(time2 != null){
+                        counter2 = counter2 + (timeaux.getTime() - time2.getTime());
+                    }                    
+                    updateWaterLevel();
+                    time2 = null;
+                    time1 = null;
+                    
+                } catch (SerialPortException ex) {
+                    Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } else {
+                try {
+                    serialPort.writeString("6");
+                    //print("6");
+                    jToggleButton3.setText("Manual");
+                    manual = false;
+                } catch (SerialPortException ex) {
+                    Logger.getLogger(PlantDataUI.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        } else {
+            jTextArea1.setText("Connection not stablished");
+        }
+    }//GEN-LAST:event_jToggleButton3ActionPerformed
+
+    //function that prints everything to the Text Area
     private void print(String s){
         jTextArea1.append(s);
     }
     
+    //function that updates the waterlevel
+    public void updateWaterLevel(){
+        //int level = (int)((MAX_TIME-(counter1+counter2))/MAX_TIME)*100;
+        
+        long level = (counter1+counter2);
+        if(level < MAX_TIME){
+            level = MAX_TIME - level;
+            double lev = (double)level/(double)MAX_TIME;
+            lev = lev*100;
+            int aux = (int)lev;
+            jProgressBar2.setValue(aux);
+        } else {
+            jProgressBar2.setValue(0);
+        }
+    }
     
     /**
      * @param args the command line arguments
@@ -387,5 +583,6 @@ public class PlantDataUI extends javax.swing.JFrame {
     private javax.swing.JTextArea jTextArea1;
     private javax.swing.JToggleButton jToggleButton1;
     private javax.swing.JToggleButton jToggleButton2;
+    private javax.swing.JToggleButton jToggleButton3;
     // End of variables declaration//GEN-END:variables
 }
