@@ -37,6 +37,7 @@ public class PlantDataUI extends javax.swing.JFrame {
     public static final int STX = 2;
     public static final int ETX = 3;
     
+    //just to change something
     private static final Map<String, Integer> plantType;
     static {
         plantType = new HashMap<>();
