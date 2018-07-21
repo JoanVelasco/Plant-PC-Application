@@ -27,7 +27,9 @@ public class PlantDataUI extends javax.swing.JFrame {
     public static final String PORT = "COM17";
     DefaultTableModel model;
     static SerialPort serialPort;
-    byte data[];
+    byte data[] = new byte[30];
+    int dataPos = 0;
+    int status = 0;
     String plantA = "", plantB = "";
     Timestamp time1, time2;
     long counter1 = 0, counter2 = 0;
@@ -36,8 +38,10 @@ public class PlantDataUI extends javax.swing.JFrame {
     public static final int DLE = 16;
     public static final int STX = 2;
     public static final int ETX = 3;
+    public static final int STATUS_OUT_CMD = 0;
+    public static final int STATUS_IN_CMD = 1;
+    public static final int STATUS_SEMI_IN_CMD = 2;
     
-    //just to change something
     private static final Map<String, Integer> plantType;
     static {
         plantType = new HashMap<>();
@@ -96,30 +100,31 @@ public class PlantDataUI extends javax.swing.JFrame {
             //For example, if the data came a method event.getEventValue() returns us the number of bytes in the input buffer.
             
             if(event.isRXCHAR()){
-                if(event.getEventValue() > 7){
+                if(event.getEventValue() > 0){
                     try {
-                        byte buffer[] = serialPort.readBytes(8); //event.getEventValue()
-                        //String buff = serialPort.readString(event.getEventValue());//new String(buffer);
-                        //Change for a switch case!!
-                        data = buffer;
+                        byte buffer[] = serialPort.readBytes(event.getEventValue()); //event.getEventValue()
+                        manageBuffer(buffer);
                         System.out.println(Arrays.toString(data));
-                        print(Arrays.toString(data));
                         //System.out.println(data.length);
-                        Message message = manageMessage(data);
-                        if(message != null){
-                            Timestamp t = new Timestamp(System.currentTimeMillis());
-                            switch(message.getAddr()){
-                                case 'R':
-                                    model.setValueAt(String.valueOf(message.getData()+"%"), 0, 1);
-                                    model.setValueAt(t.toString().substring(11, 19), 1, 1);
-                                    manageValve1(message);
-                                break;
-                                
-                                case 'E':
-                                    model.setValueAt(String.valueOf(message.getData()+"%"), 0, 2);
-                                    model.setValueAt(t.toString().substring(11, 19), 1, 2);
-                                    manageValve2(message);
-                                break;
+                        if (dataPos > 7) {
+                            dataPos = 0;
+                            print(Arrays.toString(data));
+                            Message message = manageMessage(data);
+                            if(message != null){
+                                Timestamp t = new Timestamp(System.currentTimeMillis());
+                                switch(message.getAddr()){
+                                    case 'R':
+                                        model.setValueAt(String.valueOf(message.getData()+"%"), 0, 1);
+                                        model.setValueAt(t.toString().substring(11, 19), 1, 1);
+                                        manageValve1(message);
+                                    break;
+
+                                    case 'E':
+                                        model.setValueAt(String.valueOf(message.getData()+"%"), 0, 2);
+                                        model.setValueAt(t.toString().substring(11, 19), 1, 2);
+                                        manageValve2(message);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -189,6 +194,52 @@ public class PlantDataUI extends javax.swing.JFrame {
                         updateWaterLevel();
                         time2 = null;
                     }
+                }
+            }
+        }
+
+        private void manageBuffer(byte buffer[]) {
+            for(int i = 0; i < buffer.length; i++){
+                switch (status) {
+                    case STATUS_OUT_CMD:
+                        if((i+1) < buffer.length) {
+                            if(buffer[i] == DLE && buffer[i+1] == STX) {
+                                status = STATUS_IN_CMD;
+                                dataPos = 0;
+                                data[dataPos] = buffer[i];
+                                dataPos++;
+                            }
+                        } else {
+                            if(buffer[i] == DLE) {
+                                status = STATUS_SEMI_IN_CMD;
+                            }
+                        }
+                        break;
+                        
+                    case STATUS_SEMI_IN_CMD:
+                        if (buffer[0] == STX){
+                            status = STATUS_IN_CMD;
+                            dataPos = 0;
+                            data[dataPos] = DLE;
+                            dataPos++;
+                            data[dataPos] = buffer[i];
+                            dataPos++;
+                        } else {
+                            dataPos = 0;
+                            status = STATUS_OUT_CMD;
+                        }
+                        break;
+                        
+                    case STATUS_IN_CMD:
+                        if (buffer[i] == ETX){
+                            status = STATUS_OUT_CMD;
+                            data[dataPos] = buffer[i];
+                            dataPos++;
+                        } else {
+                            data[dataPos] = buffer[i];
+                            dataPos++;
+                        }
+                        break;
                 }
             }
         }
